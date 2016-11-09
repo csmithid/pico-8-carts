@@ -37,7 +37,7 @@ field={
     for i=1,mapdim do
       self[i]={}
       for j=1,mapdim do
-        self[i][j]=new_tile()
+        self[i][j]=new_tile(i,j)
       end
     end
     --place mines
@@ -66,8 +66,10 @@ field={
   end
 }
 
-function new_tile()
+function new_tile(ix,iy)
   tile={
+    x=ix,
+    y=iy,
     sprite=1,
     punched_sprite=2,
     mine=false,
@@ -87,15 +89,15 @@ function new_tile()
         self.punched_sprite=11
         return
       end
-      count=0
+      counter=0
       for i=-1,1 do
         for j=-1,1 do
-          if x+i > 0 and x+i <= mapdim and y+j > 0 and y+j <= mapdim then
-            if not (i==0 and j==0) and field[x+i][y+j].mine then count+=1 end
+          if is_in_bounds(x+i,y+j) then
+            if not (i==0 and j==0) and field[x+i][y+j].mine then counter+=1 end
           end
         end
       end
-      self.punched_sprite=2+count
+      self.punched_sprite=2+counter
     end
   }
 	return tile
@@ -103,7 +105,7 @@ end
 
 function _init()
   field:make()
-  punch_all()
+  --punch_all()
   palt(0,false)
   palt(11,true)
 end
@@ -129,9 +131,34 @@ function keys()
   if btnp(1) then cursor:move(1,0) end
   if btnp(2) then cursor:move(0,-1) end
   if btnp(3) then cursor:move(0,1) end
-  if btnp(4) then field[cursor.x][cursor.y].punched=true end
+  if btnp(4) then punch(field[cursor.x][cursor.y]) end
   if btnp(5) then flag(cursor.x,cursor.y) end
 end
+
+function punch(first)
+  if not field[first.x][first.y].punched then
+    queue={}
+    add(queue,first)
+    while count(queue) > 0 do
+      for cell in all(queue) do
+          field[cell.x][cell.y].punched=true
+          if field[cell.x][cell.y].punched_sprite==2 then
+            for i=-1,1,2 do
+              for j=-1,1,2 do
+                if is_in_bounds(cell.x+i,cell.y+j) and field[cell.x+i][cell.y+j].punched_sprite==2 then
+                  add(queue,field[cell.x+i][cell.y+j])
+                else
+                  field[cell.x][cell.y].punched=true
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+end
+
+
 
 function punch_all()
 	for i=1,mapdim do
@@ -141,8 +168,18 @@ function punch_all()
 	end
 end
 
+function is_in_bounds(x,y)
+  if x>0 and x<= mapdim and y>0 and y<=mapdim then
+    return true
+  else
+    return false
+  end
+end
+
 function flag(x,y)
-  field[x][y].flagged=true
+  if not field[x][y].punched then
+    field[x][y].flagged=true
+  end
 end
 
 __gfx__
@@ -440,4 +477,3 @@ __music__
 00 41424344
 00 41424344
 00 41424344
-
