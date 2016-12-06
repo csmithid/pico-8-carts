@@ -1,40 +1,36 @@
 pico-8 cartridge // http://www.pico-8.com
 version 8
 __lua__
-sp=4
-tr=6
-
-_draw = function()
-	cls()
-	spw=sp*wave:sine()
-	trw=tr*wave:sine()
-	for i=0,128,spw do
-		for j=0,128,trw do
-			print("%",i,j,7)
-		end
-	end
-	print(wave.t,0,8,0)
-	print(wave:sine(),0,0,0)
-end
-
-_update = function()
-	--if btnp(0) then sp+=1 end
-	--if btnp(1) then sp-=1 end
-	--if btnp(2) then tr+=1 end
-	--if btnp(3) then tr-=1 end
-	wave:update()
-end
-
-wave = {
+timer={
 	t=0,
-	dt=0.01,
+	s=0,
 	update=function(self)
-		self.t+=self.dt
+		self.t+=1
+		if self.t>30 then
+			self.t=0
+			self.s+=1,
+		end
 	end,
-	sine=function(self)
-	return (sin(self.t)+1)/2
+	frame=function(self)
+		return self.t
+	end,
+	second=function(self)
+		return self.s
+	end,
+	wave=function(self)
+		return self.t/30
 	end
 }
+
+function _update()
+	cls()
+	timer:update()
+	--print(timer:frame(),62,61,7)
+	--print(timer:second(),62,67,7)
+	--print(sin(timer:wave()),62,73,7)
+	circfill(timer.t*4.2,32+16*sin(timer:wave()),3,7)
+	circfill(timer.t*4.2,32-16*sin(timer:wave()),3,7)
+end
 __gfx__
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
@@ -330,4 +326,3 @@ __music__
 00 41424344
 00 41424344
 00 41424344
-

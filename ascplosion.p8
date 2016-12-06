@@ -1,40 +1,64 @@
 pico-8 cartridge // http://www.pico-8.com
 version 8
 __lua__
-sp=4
-tr=6
 
-_draw = function()
-	cls()
-	spw=sp*wave:sine()
-	trw=tr*wave:sine()
-	for i=0,128,spw do
-		for j=0,128,trw do
-			print("%",i,j,7)
-		end
-	end
-	print(wave.t,0,8,0)
-	print(wave:sine(),0,0,0)
-end
+chars={"!","@","#","$","%","^","&","*","(",")","~","0","1"}
 
-_update = function()
-	--if btnp(0) then sp+=1 end
-	--if btnp(1) then sp-=1 end
-	--if btnp(2) then tr+=1 end
-	--if btnp(3) then tr-=1 end
-	wave:update()
-end
+particles={ --generic particle system (self,x,y,dx,dy,ddx,ddy,c,dc,r,dr,l)
+  new = function(self,x,y,dx,dy,ddx,ddy)
+    particle={
+      x=x,
+      y=y,
+      dx=dx,
+      dy=dy,
+      ddx=ddx,
+      ddy=ddy,
+      c=rnd(16)+1,
+      char=pick(chars),
+      update = function(self)
+        self.char=pick(chars)
+        self.c=rnd(16)+1
 
-wave = {
-	t=0,
-	dt=0.01,
-	update=function(self)
-		self.t+=self.dt
-	end,
-	sine=function(self)
-	return (sin(self.t)+1)/2
-	end
+        self.dx+=self.ddx
+        self.dy+=self.ddy
+
+        self.x+=self.dx
+        self.y+=self.dy
+
+        if self.dx+self.dy <= 0.1 then del(particles,self) end
+      end,
+      draw = function(self)
+        print(self.char,self.x-2,self.y-4,self.c)
+      end
+    }
+    add(self,particle)
+  end,
+  update = function(self)
+    for p in all(self) do p:update() end
+  end,
+  draw = function(self)
+    for p in all(self) do p:draw() end
+  end
 }
+
+function _draw()
+  particles:draw()
+end
+
+function _update()
+  particles:update()
+end
+
+function _init()
+  cls()
+  for i=0,60 do
+    particles:new(64,64,5*sin(rnd(2))-1,5*sin(rnd(2))-1,-0.5,-0.5)
+  end
+end
+
+function pick(table)
+	return table[flr(rnd(#table))+1]
+end
 __gfx__
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
@@ -330,4 +354,3 @@ __music__
 00 41424344
 00 41424344
 00 41424344
-
