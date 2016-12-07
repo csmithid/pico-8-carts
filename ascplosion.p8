@@ -3,16 +3,17 @@ version 8
 __lua__
 
 chars={"!","@","#","$","%","^","&","*","(",")","~","0","1"}
+grav=0.098
 
 particles={ --generic particle system (self,x,y,dx,dy,ddx,ddy,c,dc,r,dr,l)
-  new = function(self,x,y,dx,dy,ddx,ddy)
+  new = function(self,x,y,speed,angle,accel)
     particle={
       x=x,
       y=y,
-      dx=dx,
-      dy=dy,
-      ddx=ddx,
-      ddy=ddy,
+      dx=speed*cos(angle),
+      dy=speed*sin(angle),
+      ddx=accel*cos(angle),
+      ddy=accel*sin(angle),
       c=rnd(16)+1,
       char=pick(chars),
       update = function(self)
@@ -20,12 +21,10 @@ particles={ --generic particle system (self,x,y,dx,dy,ddx,ddy,c,dc,r,dr,l)
         self.c=rnd(16)+1
 
         self.dx+=self.ddx
-        self.dy+=self.ddy
+        self.dy+=self.ddy+grav
 
         self.x+=self.dx
         self.y+=self.dy
-
-        if self.dx+self.dy <= 0.1 then del(particles,self) end
       end,
       draw = function(self)
         print(self.char,self.x-2,self.y-4,self.c)
@@ -52,7 +51,7 @@ end
 function _init()
   cls()
   for i=0,60 do
-    particles:new(64,64,5*sin(rnd(2))-1,5*sin(rnd(2))-1,-0.5,-0.5)
+    particles:new(64,64,rnd(2)+3,rnd(1),-0.1)
   end
 end
 
