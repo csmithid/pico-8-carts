@@ -5,6 +5,7 @@ __lua__
 chars={"!","@","#","$","%","^","&","*","(",")","~","0","1"}
 grav=0.098
 
+
 particles={ --generic particle system (self,x,y,dx,dy,ddx,ddy,c,dc,r,dr,l)
   new = function(self,x,y,speed,angle,accel)
     particle={
