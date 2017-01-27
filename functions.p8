@@ -2,6 +2,91 @@ pico-8 cartridge // http://www.pico-8.com
 version 8
 __lua__
 
+--generic table functions
+
+function pick(table)
+  return table[flr(rnd(#table+1))]
+end
+
+function random(min,max)
+  return rnd(max-min)+min
+end
+
+function randint(min,max) --inclusive
+  r=flr(rnd((max-min)+1))+min
+  if r>max then return max else return r end
+end
+
+--tweens
+
+function tween(target, property, destination, duration, func)
+  local tween_info = {
+    target = target,
+    property = property,
+    base_value = target[property],
+    change = destination - target[property],
+    duration = duration,
+    elapsed = 0,
+    func = func
+  }
+  add(tweens,tween_info)
+end
+
+function tween_update()
+  for t in all(tweens) do
+    if t.elapsed > t.duration then
+      t.target[t.property] = t.base_value + t.change
+      del(tweens, t)
+    else
+      t.elapsed += 1
+      t.target[t.property] = t.func(
+          t.elapsed,
+          t.base_value,
+          t.change,
+          t.duration)
+    end
+  end
+end
+
+-- easing functions
+
+function linear(elapsed, base_value, change, duration)
+  return change * (elapsed / duration) + base_value
+end
+
+function in_out_quad(t,b,c,d)
+	t/=d/2
+	if (t<1) return c/2*t*t+b
+	t-=1
+	return -c/2*(t*(t-2)-1)+b
+end
+
+function in_quad(t,b,c,d)
+  t = t/d
+  return (c*t*t)+b
+end
+
+function out_quad(t,b,c,d)
+  t = t/d
+  return -c * t * (t-2) +b
+end
+
+function out_bounce(t,b,c,d)
+	t/=d
+	if t < (1/2.75) then
+		return c*(7.5625*t*t) + b
+	elseif t < (2/2.75) then
+		t-=(1.5/2.75)
+		return c*(7.5625*t*t+.75)+b
+	elseif t < (2.5/2.75) then
+		t-=(2.25/2.75)
+		return c*(7.5625*t*t+.9375)+b
+	else
+		t-=(2.625/2.75)
+		return c*(7.5625*t*t+.984375)+b
+	end
+end
+
 __gfx__
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
@@ -297,4 +382,3 @@ __music__
 00 41424344
 00 41424344
 00 41424344
-
