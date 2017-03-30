@@ -9,10 +9,17 @@ actors={
 		for actor in all(self) do
 			actor:draw()
 		end
+	end,
+	update = function(self)
+		for actor in all(self) do
+			actor:update()
+		end
 	end
 }
 objects={}
 tweens={}
+
+drk={[0]=0,0,1,1,2,1,5,6,2,4,9,3,1,1,2,5}
 
 player={
 	x=0,
@@ -53,7 +60,6 @@ player={
 }
 
 function _init()
-	palt(0,false)
 	palt(15,true)
 	new_map()
 	player:spawn()
@@ -61,7 +67,10 @@ end
 
 function _draw()
 	cls()
+	palt(0,true)
+	particles:draw()
 	map(0,0,0,0,16,16)
+	palt(0,false)
 	actors:draw()
 	player:draw()
 end
@@ -71,6 +80,8 @@ function _update60()
 		tween_update()
 	else
 		handle_keys()
+		actors:update()
+		particles:update()
 	end
 end
 
@@ -146,6 +157,49 @@ function in_out_quad(t,b,c,d)
 	return -c/2*(t*(t-2)-1)+b
 end
 
+particles={ --generic particle system (self,x,y,dx,dy,ddx,ddy,c,dc,r,dr,l)
+  new = function(self,x,y,speed,angle,accel,life,col)
+    particle={
+      x=x,
+      y=y,
+      dx=speed*cos(angle),
+      dy=speed*sin(angle),
+      life=life,
+			decay=life,
+      col=col,
+      update = function(self)
+        self.dx*=accel
+        self.dy*=accel
+
+        self.x+=self.dx
+        self.y+=self.dy
+
+        self.life-=1
+				if self.life <= 0 then
+					self.col = drk[self.col]
+					self.life=flr(rnd(300))
+				end
+
+      end,
+      draw = function(self)
+        pset(self.x,self.y,self.col)
+      end
+    }
+    add(self,particle)
+  end,
+  update = function(self)
+    for p in all(self) do
+			p:update()
+			if p.col==0 then
+				del(self,p)
+			end
+		end
+  end,
+  draw = function(self)
+    for p in all(self) do p:draw() end
+  end
+}
+
 function new_mob()
 	mob={
 		x=0,
@@ -167,11 +221,26 @@ function new_mob()
 				self.y=flr(rnd(16))
 				if fget(mget(self.x,self.y),0)==false then spawned=true end
 			end
+		end,
+		die = function(self)
+			for i=0,24 do
+				particles:new((self.x*8)+4,(self.y*8)+4,rnd(12)+1,rnd(2),0.5,flr(rnd(300)),11)
+			end
+			del(actors,self)
+			new_mob()
+		end,
+		update = function(self)
+			if self.x==player.x and self.y==player.y then
+				print('yay')
+				self:die()
+			end
 		end
 	}
 	mob:spawn()
 	add(actors,mob)
 end
+
+
 
 __gfx__
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
@@ -469,4 +538,3 @@ __music__
 00 41424344
 00 41424344
 00 41424344
-
