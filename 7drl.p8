@@ -5,17 +5,20 @@ mapnum = 16
 turnspeed = 8
 
 actors={
-	draw = function(self)
-		for actor in all(self) do
-			actor:draw()
-		end
-	end,
-	update = function(self)
-		for actor in all(self) do
-			actor:update()
-		end
-	end
 }
+
+function draw(group)
+	for object in all(group) do
+		object:draw()
+	end
+end
+
+function update(group)
+	for object in all(group) do
+		object:update()
+	end
+end
+
 objects={}
 tweens={}
 
@@ -71,7 +74,7 @@ function _draw()
 	particles:draw()
 	map(0,0,0,0,16,16)
 	palt(0,false)
-	actors:draw()
+	draw(actors)
 	player:draw()
 end
 
@@ -80,7 +83,7 @@ function _update60()
 		tween_update()
 	else
 		handle_keys()
-		actors:update()
+		update(actors)
 		particles:update()
 	end
 end
