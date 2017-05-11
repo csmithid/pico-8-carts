@@ -2,97 +2,33 @@ pico-8 cartridge // http://www.pico-8.com
 version 8
 __lua__
 
---useful
-
-function lerp(a,b,i) return (1-i)*a+i*b end
-function sqr(a) return a*a end
-
---generic table functions
-
-function pick(table)
-  return table[flr(rnd(#table+1))]
+r=64
+x=64
+y=64
+s=0.01
+a=0
+f=7
+function _update60()
+  a+=s
 end
 
-function random(min,max)
-  return rnd(max-min)+min
-end
-
-function randint(min,max) --inclusive
-  r=flr(rnd((max-min)+1))+min
-  if r>max then return max else return r end
-end
-
---tweens
-
-function tween(target, property, destination, duration, func)
-  local tween_info = {
-    target = target,
-    property = property,
-    base_value = target[property],
-    change = destination - target[property],
-    duration = duration,
-    elapsed = 0,
-    func = func
-  }
-  add(tweens,tween_info)
-end
-
-function tween_update()
-  for t in all(tweens) do
-    if t.elapsed > t.duration then
-      t.target[t.property] = t.base_value + t.change
-      del(tweens, t)
-    else
-      t.elapsed += 1
-      t.target[t.property] = t.func(
-          t.elapsed,
-          t.base_value,
-          t.change,
-          t.duration)
-    end
+function _draw()
+  cls()
+  trifill(x+r*cos(a),y+r*sin(a),x+r*cos(a+0.25),y+r*sin(a+0.25),x+r*cos(a+0.5),y+r*sin(a+0.5),f)
+  trifill(x+r*cos(a),y+r*sin(a),x+r*cos(a-0.25),y+r*sin(a-0.25),x+r*cos(a-0.5),y+r*sin(a-0.5),f)
+  if a>1 then
+    f=flr(rnd(17))
+    a=0
   end
+  memcpy(0x0000,0x6000,0x2000)
+  cls()
+  for x=0,1000 do
+    rnd(128)=px
+    rnd(128)=py
+    circ(px,py,2,sget(px,py))
 end
 
--- easing functions
-
-function linear(elapsed, base_value, change, duration)
-  return change * (elapsed / duration) + base_value
-end
-
-function in_out_quad(t,b,c,d)
-	t/=d/2
-	if (t<1) return c/2*t*t+b
-	t-=1
-	return -c/2*(t*(t-2)-1)+b
-end
-
-function in_quad(t,b,c,d)
-  t = t/d
-  return (c*t*t)+b
-end
-
-function out_quad(t,b,c,d)
-  t = t/d
-  return -c * t * (t-2) +b
-end
-
-function out_bounce(t,b,c,d)
-	t/=d
-	if t < (1/2.75) then
-		return c*(7.5625*t*t) + b
-	elseif t < (2/2.75) then
-		t-=(1.5/2.75)
-		return c*(7.5625*t*t+.75)+b
-	elseif t < (2.5/2.75) then
-		t-=(2.25/2.75)
-		return c*(7.5625*t*t+.9375)+b
-	else
-		t-=(2.625/2.75)
-		return c*(7.5625*t*t+.984375)+b
-	end
-end
-
-function solid_trifill_v3( x1,y1,x2,y2,x3,y3, color1)
+function trifill( x1,y1,x2,y2,x3,y3, color1)
 
 local min_x=min(x1,min(x2,x3))
 if(min_x>127)return
@@ -254,7 +190,6 @@ end
 
 end
 end
-
 __gfx__
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
@@ -550,3 +485,4 @@ __music__
 00 41424344
 00 41424344
 00 41424344
+

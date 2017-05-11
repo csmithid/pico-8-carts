@@ -1,97 +1,378 @@
 pico-8 cartridge // http://www.pico-8.com
 version 8
 __lua__
+--triangle fill thunderdome rnd 2
+--by musurca
 
---useful
+--@catatafish
+-- expects an array in the form { x0, y0, x1, y1, x2, y2, color }
+function gfx_draw(vbuf)
+--for n=1,tri_count do
+-- local vbuf = vertexbuffer[n]
+local v0x, v0y, v1x, v1y, v2x, v2y, ps = vbuf[1], vbuf[2], vbuf[3], vbuf[4], vbuf[5], vbuf[6]
 
-function lerp(a,b,i) return (1-i)*a+i*b end
-function sqr(a) return a*a end
-
---generic table functions
-
-function pick(table)
-  return table[flr(rnd(#table+1))]
+if v1y<v0y then
+v0x,v1x = v1x,v0x
+v0y,v1y = v1y,v0y
 end
 
-function random(min,max)
-  return rnd(max-min)+min
+if v2y<v0y then
+v0x,v2x = v2x,v0x
+v0y,v2y = v2y,v0y
 end
 
-function randint(min,max) --inclusive
-  r=flr(rnd((max-min)+1))+min
-  if r>max then return max else return r end
+if v2y<v1y then
+v1x,v2x = v2x,v1x
+v1y,v2y = v2y,v1y
 end
 
---tweens
+color(vbuf[7])
+if v0y == v1y then -- flat top
+rasterizetri_top(v0x,v0y,v1x,v2x,v2y)
+elseif v1y == v2y then -- flat bottom
+rasterizetri_bottom(v0x,v0y,v1x,v2x,v2y)
+else -- general case
+local newx = v0x + ((v1y-v0y)*(v2x-v0x)/(v2y-v0y))
+rasterizetri_bottom(v0x,v0y,newx,v1x,v1y) 
+rasterizetri_top(v1x,v1y,newx,v2x,v2y)
+end -- triangle cases
+--end -- triangle loop
 
-function tween(target, property, destination, duration, func)
-  local tween_info = {
-    target = target,
-    property = property,
-    base_value = target[property],
-    change = destination - target[property],
-    duration = duration,
-    elapsed = 0,
-    func = func
-  }
-  add(tweens,tween_info)
 end
 
-function tween_update()
-  for t in all(tweens) do
-    if t.elapsed > t.duration then
-      t.target[t.property] = t.base_value + t.change
-      del(tweens, t)
-    else
-      t.elapsed += 1
-      t.target[t.property] = t.func(
-          t.elapsed,
-          t.base_value,
-          t.change,
-          t.duration)
-    end
+function rasterizetri_top(v0x,v0y, v1x, v2x,v2y)
+if (v1x<v0x) v0x, v1x = v1x, v0x
+local height=v2y-v0y
+local dx_left, dx_right = (v2x-v0x)/height, (v2x-v1x)/height
+if v0y<0 then
+v0x-=dx_left*v0y
+v1x-=dx_right*v0y
+v0y=0
+end
+if (v2y>128) v2y=128
+for y=v0y,v2y do
+rectfill(v0x,y,v1x,y)
+v0x+=dx_left
+v1x+=dx_right
+end
+end
+
+function rasterizetri_bottom(v0x,v0y, v1x,v2x,v2y)
+if (v2x<v1x) v1x, v2x = v2x, v1x
+local height=v2y-v0y
+local dx_left, dx_right, xend = (v1x-v0x)/height, (v2x-v0x)/height, v0x
+if v0y<0 then
+v0x -=dx_left*v0y
+xend-=dx_right*v0y
+v0y=0
+end
+if (v2y>128) v2y=128
+for y=v0y,v2y do
+rectfill(v0x,y,xend,y)
+v0x+=dx_left
+xend+=dx_right
+end
+end
+
+--@solar
+function trifill(x1,y1,x2,y2,x3,y3,col)
+
+--[[ @todo works slower for me
+local x1=band(x1,0xffff)
+local y1=band(y1,0xffff)
+local x2=band(x2,0xffff)
+local y2=band(y2,0xffff)
+local x3=band(x3,0xffff)
+local y3=band(y3,0xffff)
+--]]
+
+---[[
+local x1=flr(x1)
+local y1=flr(y1)
+local x2=flr(x2)
+local y2=flr(y2)
+local x3=flr(x3)
+local y3=flr(y3)
+--]]
+
+local minx=min(min(x1,x2),x3)
+local maxx=max(max(x1,x2),x3)
+
+local miny=min(min(y1,y2),y3)
+local maxy=max(max(y1,y2),y3)
+
+if maxx<0
+  or minx>127
+  or maxy<0
+  or miny>127
+then
+  return
+end
+
+if(col~=nil) color(col)
+
+--[[ in practice, a rare case, a waste of some logic
+if miny==maxy or minx==maxx then
+  line(
+   minx,
+   miny,
+   maxx,
+   maxy
+  )
+--circfill(minx,miny,2,8)
+  return
+end
+--]]
+
+-- order points such that 1 is top-most, 2 is left-most, 3 is right-most
+local c={}
+if miny==y2 then
+  add(c,{x2,y2})
+  if x1<x3 then
+   add(c,{x1,y1})
+   add(c,{x3,y3})
+  else
+   add(c,{x3,y3})
+   add(c,{x1,y1})
+  end
+elseif miny==y3 then
+  add(c,{x3,y3})
+  if x1<x2 then
+   add(c,{x1,y1})
+   add(c,{x2,y2})
+  else
+   add(c,{x2,y2})
+   add(c,{x1,y1})
+  end
+else
+  add(c,{x1,y1})
+  if x2<x3 then
+   add(c,{x2,y2})
+   add(c,{x3,y3})
+  else
+   add(c,{x3,y3})
+   add(c,{x2,y2})
   end
 end
 
--- easing functions
+local w=maxx-minx
+local h=maxy-miny
 
-function linear(elapsed, base_value, change, duration)
-  return change * (elapsed / duration) + base_value
+--range of 0 to 1
+-- @todo putting stuff in range
+-- of 0 to 1 may not even
+-- be necessary (just hurt my
+-- head less while making it)
+
+local x1n=(c[1][1]-minx)/w
+
+local y2n=(c[2][2]-miny)/h
+local x2n=(c[2][1]-minx)/w
+
+local y3n=(c[3][2]-miny)/h
+local x3n=(c[3][1]-minx)/w
+
+for ly=max(miny,0),min(maxy,127) do
+  lyn=(ly-miny)/h
+  if c[2][2]<c[3][2] then
+   -- bottom left point is raised
+   if lyn<y2n then
+    --area above raised point
+    lminx=lerp(x1n,x2n,lyn*(1/y2n))
+   else
+    --area below raised point
+    lminx=lerp(x2n,x3n,(lyn-y2n)*(1/(1-y2n)))
+   end
+   lmaxx=lerp(x1n,x3n,lyn)
+  else
+   -- bottom right point is raised
+   if lyn<y3n then
+    --area above raised point
+    lmaxx=lerp(x1n,x3n,lyn*(1/y3n))
+   else
+    --area below raised point
+    lmaxx=lerp(x3n,x2n,(lyn-y3n)*(1/(1-y3n)))
+   end
+   lminx=lerp(x1n,x2n,lyn)
+  end
+  rectfill(
+   lminx*w+minx,
+   ly,
+   lmaxx*w+minx,
+   ly
+  )
+--[[
+  line(
+   lminx*w+minx,
+   ly,
+   lmaxx*w+minx,
+   ly
+  )
+--]]
 end
 
-function in_out_quad(t,b,c,d)
-	t/=d/2
-	if (t<1) return c/2*t*t+b
-	t-=1
-	return -c/2*(t*(t-2)-1)+b
 end
 
-function in_quad(t,b,c,d)
-  t = t/d
-  return (c*t*t)+b
+--@nusan
+function clip(v)
+	return max(-1,min(128,v))
 end
 
-function out_quad(t,b,c,d)
-  t = t/d
-  return -c * t * (t-2) +b
+function lerp(a,b,alpha)
+	return a*(1.0-alpha)+b*alpha
 end
 
-function out_bounce(t,b,c,d)
-	t/=d
-	if t < (1/2.75) then
-		return c*(7.5625*t*t) + b
-	elseif t < (2/2.75) then
-		t-=(1.5/2.75)
-		return c*(7.5625*t*t+.75)+b
-	elseif t < (2.5/2.75) then
-		t-=(2.25/2.75)
-		return c*(7.5625*t*t+.9375)+b
-	else
-		t-=(2.625/2.75)
-		return c*(7.5625*t*t+.984375)+b
+function steptri(x1,y1,x2,y2,x3,y3,c)
+
+if(y2<y1) then
+if(y3<y2) then
+y1,y3=y3,y1
+x1,x3=x3,x1
+else
+y1,y2=y2,y1
+x1,x2=x2,x1
+end
+else
+if(y3<y1) then
+y1,y3=y3,y1
+x1,x3=x3,x1
+end
+end
+
+y1 += 0.001 -- offset to avoid divide per 0
+
+local miny = min(y2,y3)
+local maxy = max(y2,y3)
+
+local fx = x2
+if(y2<y3) then
+fx = x3
+end
+
+local d12 = (y2-y1)
+if(d12 != 0) then
+d12 = 1.0/d12
+end
+local d13 = (y3-y1)
+if(d13 != 0) then
+d13 = 1.0/d13
+end
+local cl_y1 = clip(y1)
+local cl_miny = clip(miny)
+local cl_maxy = clip(maxy)
+
+local steps = (x3-x1) * d13
+local stepe = (x2-x1) * d12
+
+local sx = steps*(cl_y1-y1)+x1
+local ex = stepe*(cl_y1-y1)+x1
+
+for y=cl_y1,cl_miny do
+rectfill(sx,y,ex,y,c)
+sx += steps
+ex += stepe
+end
+
+sx = steps*(miny-y1)+x1
+ex = stepe*(miny-y1)+x1
+
+local df = (maxy-miny)
+if(df != 0) df = 1.0/df
+
+local step2s = (fx-sx) * df
+local step2e = (fx-ex) * df
+
+local sx2 = sx + step2s*(cl_miny-miny)
+local ex2 = ex + step2e*(cl_miny-miny)
+
+for y=cl_miny,cl_maxy do
+rectfill(sx2,y,ex2,y,c)
+sx2 += step2s
+ex2 += step2e
+end
+end
+
+--@creamdog
+function sort2dvectors(list)
+	for i=1,#list do
+	for j=1,#list do
+		if i != j then
+			local x1 = list[i][1]
+			local y1 = list[i][2]
+			local x2 = list[j][1]
+			local y2 = list[j][2]
+			if y2 > y1 then
+				local tmp = list[i]
+				list[i] = list[j]
+				list[j] = tmp
+			elseif y2 == y1 then
+				if x2 > x1 then
+				local tmp = list[i]
+				list[i] = list[j]
+				list[j] = tmp
+				end
+			end
+		end
+	end		
 	end
+	return list
 end
 
+function tri(x1,y1,x2,y2,x3,y3,col)
+
+	local list = {{flr(x1),flr(y1)},{flr(x2),flr(y2)},{flr(x3),flr(y3)}}
+	list = sort2dvectors(list)
+
+
+
+	local xs = list[1][1]
+	local xe = list[1][1]
+
+
+	local vx1 = (list[2][1]-list[1][1])/(list[2][2]-list[1][2])
+	local vx2 = (list[3][1]-list[2][1])/(list[3][2]-list[2][2])
+	local vx3 = (list[3][1]-list[1][1])/(list[3][2]-list[1][2])
+
+	if flr((list[2][2]-list[1][2])) == 0 then
+		vx2 = vx3
+		xe = list[2][1]
+		vx3 = (list[3][1]-list[2][1])/(list[3][2]-list[2][2])
+	end
+
+
+	for y=list[1][2],list[3][2],1 do
+
+
+		if (y >= 0 and y <=127) then
+			local x1 = xs
+			local x2 = xe
+
+			if (x1 < 0) x1 = 0
+			if (x1 > 128) x1 = 128
+			if (x2 < 0) x2 = 0
+			if (x2 > 128) x2 = 128
+
+			local l = sqrt((x1-x2)*(x1-x2))
+			local mx = flr(min(x1,x2))
+			local addr = 0x6000+y*64+flr(mx/2)
+
+			memset(addr, col+col*16, -flr(-(l/2)))
+		end
+		
+		if y < list[2][2] then
+			xs += vx1
+		elseif y >= list[2][2] then
+			xs += vx2
+		end
+		
+		xe += vx3
+	
+	end
+
+	return list
+end
+
+--by @electricgryphon
 function solid_trifill_v3( x1,y1,x2,y2,x3,y3, color1)
 
 local min_x=min(x1,min(x2,x3))
@@ -113,7 +394,7 @@ local y3=band(y3,0xffff)
 local width=min(127,max_x)-max(0,min_x)
 local height=min(127,max_y)-max(0,min_y)
 
-if(width>height)then --wide triangle
+if(width>height)then --wide triangle 
 local nsx,nex
 --sort y1,y2,y3
 if(y1>y2)then
@@ -128,10 +409,10 @@ end
 
 if(y2>y3)then
 y2,y3=y3,y2
-x2,x3=x3,x2
+x2,x3=x3,x2 
 end
 
-if(y1!=y2)then
+if(y1!=y2)then 
 local delta_sx=(x3-x1)/(y3-y1)
 local delta_ex=(x2-x1)/(y2-y1)
 
@@ -196,10 +477,10 @@ end
 
 if(x2>x3)then
 x2,x3=x3,x2
-y2,y3=y3,y2
+y2,y3=y3,y2 
 end
 
-if(x1!=x2)then
+if(x1!=x2)then 
 local delta_sy=(y3-y1)/(x3-x1)
 local delta_ey=(y2-y1)/(x2-x1)
 
@@ -255,6 +536,334 @@ end
 end
 end
 
+-- by @scgrn	
+-- draws a filled convex polygon
+-- v is an array of vertices
+-- {x1, y1, x2, y2} etc
+function render_poly(v,col)
+col=col or 5
+
+-- initialize scan extents
+-- with ludicrous values
+local x1,x2={},{}
+for y=0,127 do
+  x1[y],x2[y]=128,-1
+end
+local y1,y2=128,-1
+
+-- scan convert each pair
+-- of vertices
+for i=1, #v/2 do
+  local next=i+1
+  if (next>#v/2) next=1
+
+  -- alias verts from array
+  local vx1=flr(v[i*2-1])
+  local vy1=flr(v[i*2])
+  local vx2=flr(v[next*2-1])
+  local vy2=flr(v[next*2])
+
+  if vy1>vy2 then
+   -- swap verts
+   local tempx,tempy=vx1,vy1
+   vx1,vy1=vx2,vy2
+   vx2,vy2=tempx,tempy
+  end 
+
+  -- skip horizontal edges and
+  -- offscreen polys
+  if vy1~=vy2 and vy1<128 and
+   vy2>=0 then
+   
+   -- clip edge to screen bounds
+   if vy1<0 then
+    vx1=(0-vy1)*(vx2-vx1)/(vy2-vy1)+vx1
+    vy1=0
+   end
+   if vy2>127 then
+    vx2=(127-vy1)*(vx2-vx1)/(vy2-vy1)+vx1
+    vy2=127
+   end
+     
+   -- iterate horizontal scans
+   for y=vy1,vy2 do
+    if (y<y1) y1=y
+    if (y>y2) y2=y
+   
+    -- calculate the x coord for
+    -- this y coord using math!
+    x=(y-vy1)*(vx2-vx1)/(vy2-vy1)+vx1
+   
+    if (x<x1[y]) x1[y]=x
+    if (x>x2[y]) x2[y]=x
+   end 
+  end
+end
+
+-- render scans
+for y=y1,y2 do
+  local sx1=flr(max(0,x1[y]))
+  local sx2=flr(min(127,x2[y]))
+
+  local c=col*16+col
+  local ofs1=flr((sx1+1)/2)
+  local ofs2=flr((sx2+1)/2)
+  memset(0x6000+(y*64)+ofs1,c,ofs2-ofs1)
+  pset(sx1,y,c)
+  pset(sx2,y,c)
+end 
+end
+
+--by @musurca
+function raster_triangle(p0,p1,p2)
+ --determine orientation of pts
+ local p_left,p_mid,p_right
+ 
+ if p0[1]<p1[1] and p0[1]<p2[1] then
+  p_left=p0
+  if p1[1]<p2[1] then
+   p_mid,p_right=p1,p2
+  else
+   p_mid,p_right=p2,p1
+  end
+ elseif p1[1]<p0[1] and p1[1]<p2[1] then
+  p_left=p1
+  if p0[1]<p2[1] then
+   p_mid,p_right=p0,p2
+  else
+   p_mid,p_right=p2,p0
+  end
+ elseif p2[1]<p0[1] and p2[1]<p1[1] then
+  p_left=p2
+  if p0[1]<p1[1] then
+   p_mid,p_right=p0,p1
+  else
+   p_mid,p_right=p1,p0
+  end
+ else -- one pt.x==another pt.x
+  if p0[1]<p1[1] or p0[1]<p2[1] then
+   p_left=p0
+   if p1[1]<p2[1] then
+    p_mid,p_right=p1,p2
+   else
+    p_mid,p_right=p2,p1
+   end
+  elseif p1[1]<p0[1] or p1[1]<p2[1] then
+   p_left=p1
+   if p0[1]<p2[1] then
+    p_mid,p_right=p0,p2
+   else
+    p_mid,p_right=p2,p0
+   end
+  else
+   p_left=p2
+   if p0[1]<p2[1] then
+    p_mid,p_right=p0,p2
+   else
+    p_mid,p_right=p2,p0
+   end
+  end
+ end
+
+ --p_left[1]+=0.5
+ --p_left[2]+=0.5
+ --p_mid[1]+=0.5
+ --p_mid[2]+=0.5
+ --p_right[1]+=0.5
+ --p_right[2]+=0.5
+
+ --calculate right triangles
+ local base_dist=p_right[1]-p_left[1]
+ local seg1_dist=p_mid[1]-p_left[1]
+ local seg2_dist=base_dist-seg1_dist
+ 
+ local base_yinc,seg1_yinc,seg2_yinc
+ 
+ if base_dist==0 then
+  base_yinc=0
+ else
+  base_yinc=(p_right[2]-p_left[2])/base_dist
+ end
+ if seg1_dist<=0 then
+  seg1_yinc=0
+ else
+  seg1_yinc=(p_mid[2]-p_left[2])/seg1_dist
+ end
+ if seg2_dist<=0 then
+  seg2_yinc=0
+ else
+  seg2_yinc=(p_right[2]-p_mid[2])/seg2_dist
+ end
+ 
+ --start rasterizing
+ local x=p_left[1]
+ local y0=p_left[2]
+ local y1=y0
+ local off
+
+ --make sure we don't waste time
+ --rastering outside the canvas
+ if x<0 then
+  seg1_dist=seg1_dist+x
+  if seg1_dist>0 then
+   off=-x
+  else
+   off=seg1_dist-x
+  end
+  y0+=(off*seg1_yinc)
+  y1+=(off*base_yinc)
+  x+=off
+ end
+
+ if x+seg1_dist>=128 then
+  seg1_dist=128-x
+  seg2_dist=0
+ end
+
+ --raster first triangle
+ for i=1,seg1_dist do
+  rectfill(x,y0,x,y1)
+  y0+=seg1_yinc
+  y1+=base_yinc
+  x+=1
+ end
+ 
+ y0=p_mid[2]
+ 
+ if x<0 then
+  seg2_dist=seg2_dist+x
+  if seg2_dist>0 then
+   off=-x
+  else
+   off=seg2_dist-x
+  end
+  y0+=off*seg2_yinc
+  y1+=off*base_yinc
+  x+=off
+ end
+
+ if x+seg2_dist>=128 then
+  seg2_dist=128-x
+ end
+ 
+ --raster second triangle
+ for i=1,seg2_dist do
+  rectfill(x,y0,x,y1)
+  y0=y0+seg2_yinc
+  y1=y1+base_yinc
+  x=x+1
+ end
+ 
+ --ensure thin triangles 
+ --don't disappear
+ --line(p_left[1],p_left[2],p_mid[1],p_mid[2])
+ --line(p_mid[1],p_mid[2],p_right[1],p_right[2])
+end
+
+function profile(func,tab)
+ local t=time()
+ local x
+ local r
+ for q=1,10 do
+  for i=1,#tab do
+   x=tab[i]
+   r=func(x)
+  end
+ end
+ return time()-t
+end
+
+ctable={}
+ntable={}
+tritable={}
+flattable={}
+extentx=-50
+extenty=127+50
+
+function rndextents()
+ return flr(extentx+rnd(extenty-extentx))
+end
+
+for i=1,300 do
+ tritable[i]={{rndextents(),rndextents(),
+               rndextents(),rndextents(),
+               rndextents(),rndextents()},flr(rnd(15))+1}
+ local t=tritable[i][1]
+ ntable[i]={{t[1],t[2]},{t[3],t[4]},{t[5],t[6]},tritable[i][2]}
+ ctable[i]={t[1],t[2],t[3],t[4],t[5],t[6],tritable[i][2]}
+ flattable[i] = {t[1], t[2], t[3], t[4], t[5], t[6], tritable[i][2] }
+end
+
+function rect_raster(a)
+ color(a[4])
+ raster_triangle(a[1],a[2],a[3],a[4])
+end
+
+function memset_raster(a)
+ render_poly(a[1],a[2])
+end
+
+function eg_raster(a)
+ local v=a[1]
+ solid_trifill_v3(v[1],v[2],v[3],v[4],v[5],v[6],a[2])
+end
+
+function llama_raster(a)
+ local v=a[1]
+ tri(v[1],v[2],v[3],v[4],v[5],v[6],a[2])
+end
+
+function nusan_raster(a)
+ local v=a[1]
+ steptri(v[1],v[2],v[3],v[4],v[5],v[6],a[2])
+end
+
+function solar_raster(a)
+ local v=a[1]
+ trifill(v[1],v[2],v[3],v[4],v[5],v[6],a[2])
+end
+
+function catfish_raster(a)
+ gfx_draw(a)
+end
+
+cls()
+color(7)
+print("\ntriangle fill thunderdome\nround 2!\n\n\n\n")
+print("press — or Ž to begin")
+print("(wait 15-20 seconds for results)")
+while(not btn(4) and not btn(5)) do end
+
+a0=profile(catfish_raster,flattable)
+--a1=profile(llama_raster,tritable)
+a2=profile(eg_raster,tritable)
+a3=profile(rect_raster,ntable)
+a4=profile(nusan_raster,tritable)
+a5=profile(memset_raster,tritable)
+a6=profile(solar_raster,tritable)
+
+function prresult(t)
+ color(7)
+ print(t.." secs ("..flr(3000/t).." tris/sec)\n")
+ color(12)
+end
+
+cls()
+color(12)
+print("-------- catatafish --------")
+prresult(a0)
+--print("--------- creamdog ---------")
+--prresult(a1)
+print("-----  electricgryphon -----")
+prresult(a2)
+print("---------- musurca ---------")
+prresult(a3)
+print("----------- nusan ----------")
+prresult(a4)
+print("----------- scgrn ----------")
+prresult(a5)
+print("----------- solar ----------")
+prresult(a6)
 __gfx__
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
@@ -550,3 +1159,4 @@ __music__
 00 41424344
 00 41424344
 00 41424344
+
